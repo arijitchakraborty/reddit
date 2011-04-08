@@ -566,7 +566,7 @@ def all_queries(fn, obj, *param_lists):
 
 ## The following functions should be called after their respective
 ## actions to update the correct listings.
-def new_link(link):
+def new_link(link, skip_q = False):
     "Called on the submission and deletion of links"
     sr = Subreddit._byID(link.sr_id)
     author = Account._byID(link.author_id)
@@ -584,8 +584,8 @@ def new_link(link):
         results.append(get_spam_links(sr))
 
     add_queries(results, insert_items = link)
-    amqp.add_item('new_link', link._fullname)
-
+    if not skip_q:
+        amqp.add_item('new_link', link._fullname)
 
 def new_comment(comment, inbox_rels):
     author = Account._byID(comment.author_id)

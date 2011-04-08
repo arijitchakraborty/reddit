@@ -45,7 +45,7 @@ from r2.lib.filters import _force_unicode, websafe_json, websafe, spaceCompress
 from r2.lib.db import queries
 from r2.lib.db.queries import changed
 from r2.lib import promote
-from r2.lib.media import force_thumbnail, thumbnail_url
+from r2.lib.media import force_thumbnail, thumbnail_url, set_media_from_api_submit
 from r2.lib.comment_tree import delete_comment
 from r2.lib import tracking,  cssfilter, emailer
 from r2.lib.subreddit_search import search_reddits
@@ -197,12 +197,15 @@ class ApiController(RedditController):
                    title = VTitle('title'),
                    save = VBoolean('save'),
                    selftext = VSelfText('text'),
+                   usr_thumbnail = VUrl('usr_thumbnail'),
+                   usr_embed = VSelfText('usr_embed'),
+                   default_oembed = VSelfText('default_oembed'),
                    kind = VOneOf('kind', ['link', 'self']),
                    then = VOneOf('then', ('tb', 'comments'),
                                  default='comments'),
                    extension = VLength("extension", 20))
     def POST_submit(self, form, jquery, url, selftext, kind, title,
-                    save, sr, ip, then, extension):
+                    save, sr, ip, then, extension, usr_thumbnail, usr_embed, default_oembed):
         from r2.models.admintools import is_banned_domain
 
         if isinstance(url, (unicode, str)):
@@ -317,6 +320,11 @@ class ApiController(RedditController):
         # well, nothing left to do but submit it
         l = Link._submit(request.post.title, url if kind == 'link' else 'self',
                          c.user, sr, ip, spam=c.user._spam)
+        
+        link_scraped = False   
+        if default_oembed or usr_thumbnail or usr_embed:
+            set_media_from_api_submit(l, usr_thumbnail = usr_thumbnail, usr_embed = usr_embed, default_oembed = default_oembed)
+            link_scraped = True
 
         if banmsg:
             admintools.spam(l, banner = "domain (%s)" % banmsg)
@@ -342,7 +350,10 @@ class ApiController(RedditController):
                                  prefix = "rate_submit_")
 
         #update the queries
-        queries.new_link(l)
+        if link_scraped:
+            queries.new_link(l, True)
+        else:
+            queries.new_link(l)
         changed(l)
 
         if then == 'comments':

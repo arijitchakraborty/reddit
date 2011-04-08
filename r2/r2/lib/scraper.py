@@ -234,8 +234,10 @@ class Scraper:
 
         return max_url
 
-    def thumbnail(self):
-        image_url = self.largest_image_url()
+    def thumbnail(self, image_url = None):
+        if image_url is None:
+            image_url = self.largest_image_url()
+            
         if image_url:
             content_type, image_str = fetch_url(image_url, referer = self.url)
             if image_str:
@@ -248,6 +250,7 @@ class Scraper:
                         return
                     raise
                 return image
+        return None
 
     def media_object(self):
         for deepscraper in deepscrapers:
@@ -318,9 +321,9 @@ def youtube_in_google(google_url):
 def make_scraper(url):
     domain = utils.domain(url)
     scraper = Scraper
-    for suffix, clses in scrapers.iteritems():
+    for _for, clses in scrapers.iteritems():
         for cls in clses:
-            if domain.endswith(suffix):
+            if _for == 'all':
                 scraper = cls
                 break
     
@@ -1325,42 +1328,51 @@ class YoutubeEmbedDeepScraper(DeepScraper):
                 mo['deep'] = scraper.url
                 return mo
 
+class ProEmbedlyOembed(OEmbed):
+    """
+    Pro Embedly oEmbed Provider
+    =======================
+    documentation: http://pro.embed.ly
+    """
+    
+    domains = ['all']
+    url_re = re.compile('.*')
+    
+    api_endpoint = 'http://pro.embed.ly/1/oembed'
+    api_params = {'format':'json', 'maxwidth':600 , 'key':'b5dfb9ca03b011e084894040444cdc60' }
+    
+    def largest_image_url(self):
+        if not self.oembed:
+            self.download()
+        if self.oembed.get('type') == 'link':
+            return None
+
+        #if the original url was of the photo type
+        if self.oembed and self.oembed.get('type') =='photo':
+            return self.oembed.get('url')
+        elif self.oembed and self.oembed.get('thumbnail_url'):
+            return self.oembed.get('thumbnail_url')
+    
+    def media_object(self):
+        #Seems to be the default place to check if the download has happened.
+        if not self.oembed:
+            self.download()
+
+        if self.oembed and self.oembed.get('type') in ['video', 'rich']:
+            return dict(type=utils.domain(self.oembed.get('provider_url','')), oembed=self.oembed)
+        
+        return None
+    
 #scrapers =:= dict(domain -> ScraperClass)
 scrapers = {}
-for scraper in [ EmbedlyOEmbed,
-                 YoutubeScraper,
-                 MetacafeScraper,
-                 GootubeScraper,
-                 VimeoScraper,
-                 BreakScraper,
-                 TheOnionScraper,
-                 CollegeHumorScraper,
-                 FunnyOrDieScraper,
-                 ComedyCentralScraper,
-                 ColbertNationScraper,
-                 TheDailyShowScraper,
-                 TedScraper,
-                 LiveLeakScraper,
-                 DailyMotionScraper,
-                 RevverScraper,
-                 EscapistScraper,
-                 JustintvScraper,
-                 SoundcloudScraper,
-                 CraigslistScraper,
-                 GenericScraper,
-                 ]:
+for scraper in [ ProEmbedlyOEmbed, ]:
     for domain in scraper.domains:
         scrapers.setdefault(domain, []).append(scraper)
 
 deepscrapers = [YoutubeEmbedDeepScraper]
 
 def get_media_embed(media_object):
-    for scraper in scrapers.get(media_object['type'], []):
-        res = scraper.media_embed(**media_object)
-        if res:
-            return res
-    if 'content' in media_object:
-        return GenericScraper.media_embed(**media_object)
+    return ProEmbedlyPreview.media_embed(**media_object)
 
 def convert_old_media_objects():
     q = Link._query(Link.c.media_object is not None,

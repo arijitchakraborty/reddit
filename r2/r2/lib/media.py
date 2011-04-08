@@ -69,7 +69,7 @@ def upload_thumb(link, image, never_expire = True, reduced_redundancy=True):
 
 
 def update_link(link, thumbnail, media_object):
-    """Sets the link's has_thumbnail and media_object attributes iin the
+    """Sets the link's has_thumbnail and media_object attributes in the
     database."""
     if thumbnail:
         link.has_thumbnail = True
@@ -107,6 +107,31 @@ def set_media(link, force = False):
         upload_thumb(link, thumbnail)
 
     update_link(link, thumbnail, media_object)
+
+def set_media_from_api_submit(link, usr_thumbnail = None, usr_embed = None, default_oembed = None):
+    
+    import simplejson as json
+
+    scraper = make_scraper(link.url)
+    
+    usr_embed_object = None
+    if default_oembed:
+        usr_embed_object = json.loads(default_oembed)
+        usr_thumbnail = usr_embed_object.get('thumbnail_url', '')
+        usr_embed_object = {'oembed': usr_embed_object, 'type': link.link_domain()}
+
+    if usr_thumbnail == 'http://0':
+        usr_thumbnail = '';
+    
+    thumbnail = scraper.thumbnail(image_url = usr_thumbnail)
+    if thumbnail:
+        upload_thumb(link, thumbnail)
+        
+    if usr_embed and usr_embed_object is None:
+        usr_embed_object = json.loads(usr_embed)
+        usr_embed_object = {'oembed': usr_embed_object, 'type': link.link_domain()}
+        
+    update_link(link, thumbnail, usr_embed_object)    
 
 def force_thumbnail(link, image_data, never_expire = True):
     image = str_to_image(image_data)

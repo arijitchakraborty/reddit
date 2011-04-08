@@ -135,8 +135,8 @@ class Link(Thing, Printable):
                 ip = ip)
         l._commit()
         l.set_url_cache()
-        if author._spam:
-            admintools.spam(l, banner='banned user')
+        #if author._spam:
+        #    admintools.spam(l, banner='banned user')
         return l
 
     @classmethod
@@ -388,10 +388,12 @@ class Link(Thing, Printable):
             if item.is_self:
                 item.url = item.make_permalink(item.subreddit,
                                                force_domain = True)
-
-            if g.shortdomain:
-                item.shortlink = g.shortdomain + '/' + item._id36
-
+            try:
+                if g.shortdomain:
+                    item.shortlink = g.shortdomain + '/' + item._id36
+            except:
+                pass
+            
             # do we hide the score?
             if user_is_admin:
                 item.hide_score = False

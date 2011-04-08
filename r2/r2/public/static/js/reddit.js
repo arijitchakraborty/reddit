@@ -752,6 +752,15 @@ function login(elem) {
     return post_user(this, "login");
 };
 
+function isEmpty(obj) {
+    for(var prop in obj) {
+        if(obj.hasOwnProperty(prop))
+            return false;
+    }
+
+    return true;
+};
+
 function register(elem) {
     if(cnameframe)
         return true;
@@ -768,6 +777,110 @@ function fetch_title() {
         status.show().text(reddit.status_msg.loading);
         error.hide();
         $.request("fetch_title", {url: url});
+        
+        $('#usr_preference_media').remove();
+        $.embedly(url, {'key' : 'Enter_your_key'}, function(oembed, dict) { 
+            if (!isEmpty(oembed.oembed)) {
+                var inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.id = 'usr_preference_media'
+                inp.name = 'default_oembed';
+                inp.value = JSON.stringify(oembed.oembed);
+                url_field.append(inp);            
+            } else {
+                var tbl = document.createElement('table');
+                tbl.id = 'usr_preference_media';
+                
+                if (oembed.images) {
+                    var inp = document.createElement('input');
+                    var p = document.createElement('p');
+                    var tr = document.createElement('tr');
+    
+                    inp.type = 'radio';
+                    inp.name = 'usr_thumbnail';
+                    inp.value = '0';
+                    inp.checked = "checked";
+                    
+                    p.innerHTML = 'No Image';
+                    
+                    td1 = document.createElement('td')
+                    td1.appendChild(inp)
+                    tr.appendChild(td1);
+                    
+                    td2 = document.createElement('td')
+                    td2.appendChild(p)
+                    tr.appendChild(td2);
+                    tbl.appendChild(tr);
+                    
+                    for (each in oembed.images) {
+                        var inp = document.createElement('input');
+                        var img = document.createElement('img');
+                        var tr = document.createElement('tr');
+        
+                        inp.type = 'radio';
+                        inp.name = 'usr_thumbnail';
+                        inp.value = oembed.images[each].url;
+                        
+                        img.src = oembed.images[each].url;
+                        img.height = oembed.images[each].height;// + 'px';
+                        img.width = oembed.images[each].width;// +'px';
+                        
+                        td1 = document.createElement('td')
+                        td1.appendChild(inp)
+                        tr.appendChild(td1);
+                        
+                        td2 = document.createElement('td')
+                        td2.appendChild(img)
+                        tr.appendChild(td2);
+                        tbl.appendChild(tr);
+                    }
+                }
+               
+               if (oembed.embeds) {
+                    var inp = document.createElement('input');
+                    var p = document.createElement('p');
+                    var tr = document.createElement('tr');
+    
+                    inp.type = 'radio';
+                    inp.name = 'usr_embed';
+                    inp.value = '0';
+                    inp.checked = "checked";
+                    
+                    p.innerHTML = 'No Embed';
+                    
+                    td1 = document.createElement('td')
+                    td1.appendChild(inp)
+                    tr.appendChild(td1);
+                    
+                    td2 = document.createElement('td')
+                    td2.appendChild(p)
+                    tr.appendChild(td2);
+                    tbl.appendChild(tr);
+                    
+                    for (each in oembed.embeds) {
+                        var inp = document.createElement('input');
+                        var embed_div = document.createElement('div');
+                        embed_div.innerHTML = oembed.embeds[each].html
+                        var tr = document.createElement('tr');
+                        
+                        inp.type = 'radio';
+                        inp.name = 'usr_embed';
+                        inp.value = JSON.stringify(oembed.embeds[each]);
+                        
+                        td1 = document.createElement('td')
+                        td1.appendChild(inp)
+                        tr.appendChild(td1);
+                        
+                        td2 = document.createElement('td')
+                        td2.appendChild(embed_div)
+                        tr.appendChild(td2);
+                        tbl.appendChild(tr);
+                    }
+                }
+            }
+            if ((oembed.embeds) || (oembed.images) || (oembed.object))
+               url_field.append(tbl);
+        });
     }
     else {
         status.hide();
